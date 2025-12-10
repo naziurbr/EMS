@@ -1,0 +1,30 @@
+{
+    "name": "event-management-system/ems",
+    "description": "Event Management System",
+    "type": "project",
+    "require": {
+        "php": ">=7.4",
+        "vlucas/phpdotenv": "^5.3",
+        "phpmailer/phpmailer": "^6.5",
+        "endroid/qr-code": "^4.0",
+        "firebase/php-jwt": "^5.4",
+        "monolog/monolog": "^2.3"
+    },
+    "autoload": {
+        "psr-4": {
+            "App\\": "app/"
+        },
+        "files": [
+            "app/helpers/url.php",
+            "app/helpers/auth.php",
+            "app/helpers/functions.php"
+        ]
+    },
+    "config": {
+        "optimize-autoloader": true,
+        "preferred-install": "dist",
+        "sort-packages": true
+    },
+    "minimum-stability": "dev",
+    "prefer-stable": true
+}
