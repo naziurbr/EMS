@@ -5,45 +5,14 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 
 // Load configuration
-$config = require __DIR__ . '/../config/app.php';
+require_once __DIR__ . '/config.php';
 
 // Set error reporting
-if ($config['debug']) {
-    error_reporting(E_ALL);
-    ini_set('display_errors', 1);
-} else {
-    error_reporting(0);
-    ini_set('display_errors', 0);
-}
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
 
-// Define base URL
-define('BASE_URL', $config['base_url']);
-
-// Database connection
-try {
-    $pdo = new PDO(
-        "mysql:host={$config['db']['host']};dbname={$config['db']['database']};charset={$config['db']['charset']}",
-        $config['db']['username'],
-        $config['db']['password'],
-        [
-            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-            PDO::ATTR_EMULATE_PREPARES => false,
-        ]
-    );
-} catch (PDOException $e) {
-    die("Database connection failed: " . $e->getMessage());
-}
-
-// Helper functions
-function url($path = '') {
-    return rtrim(BASE_URL, '/') . '/' . ltrim($path, '/');
-}
-
-function redirect($path) {
-    header('Location: ' . url($path));
-    exit;
-}
+// Get database connection
+$pdo = getDB();
 
 // Set page title
 $pageTitle = 'Home - Event Management System';
@@ -100,35 +69,52 @@ require_once __DIR__ . '/templates/header.php';
         <div class="row">
             <?php
             try {
-                $pdo = getDB();
-                $stmt = $pdo->query("SELECT * FROM events WHERE event_date >= CURDATE() ORDER BY event_date ASC LIMIT 3");
+                $stmt = $pdo->query("SELECT e.*, ec.name as category_name 
+                                   FROM events e 
+                                   LEFT JOIN event_categories ec ON e.category_id = ec.id 
+                                   WHERE e.start_datetime >= NOW() 
+                                   AND e.status = 'approved'
+                                   ORDER BY e.start_datetime ASC 
+                                   LIMIT 3");
                 $events = $stmt->fetchAll();
 
                 if (count($events) > 0) {
                     foreach ($events as $event) {
                         echo '<div class="col-md-4 mb-4">';
                         echo '  <div class="card h-100">';
-                        echo '    <img src="' . htmlspecialchars($event['image_url'] ?? 'https://via.placeholder.com/300x200') . '" class="card-img-top" alt="Event Image">';
-                        echo '    <div class="card-body">';
+                        if (!empty($event['image_url'])) {
+                            echo '    <img src="' . htmlspecialchars($event['image_url']) . '" class="card-img-top" alt="' . htmlspecialchars($event['title']) . '">';
+                        } else {
+                            echo '    <div class="card-img-top bg-secondary text-white d-flex align-items-center justify-content-center" style="height: 200px;">';
+                            echo '        <i class="bi bi-calendar-event" style="font-size: 3rem;"></i>';
+                            echo '    </div>';
+                        }
+                        echo '    <div class="card-body d-flex flex-column">';
                         echo '      <h5 class="card-title">' . htmlspecialchars($event['title']) . '</h5>';
-                        echo '      <p class="card-text">' . substr(htmlspecialchars($event['description']), 0, 100) . '...</p>';
-                        echo '      <p class="text-muted">' . date('M j, Y', strtotime($event['event_date'])) . '</p>';
-                        echo '      <a href="' . url('event.php?id=' . $event['id']) . '" class="btn btn-primary">View Details</a>';
+                        if (!empty($event['category_name'])) {
+                            echo '      <span class="badge bg-primary mb-2">' . htmlspecialchars($event['category_name']) . '</span>';
+                        }
+                        echo '      <p class="card-text flex-grow-1">' . substr(htmlspecialchars($event['description']), 0, 100) . '...</p>';
+                        echo '      <div class="mt-auto">';
+                        echo '          <p class="text-muted mb-2"><i class="bi bi-calendar-event"></i> ' . date('M j, Y', strtotime($event['start_datetime'])) . '</p>';
+                        echo '          <a href="' . url('event.php?id=' . $event['id']) . '" class="btn btn-primary w-100">View Details</a>';
+                        echo '      </div>';
                         echo '    </div>';
                         echo '  </div>';
                         echo '</div>';
                     }
-                    echo '<div class="text-center mt-4">';
+                    echo '<div class="col-12 text-center mt-4">';
                     echo '  <a href="' . url('events.php') . '" class="btn btn-outline-primary">View All Events</a>';
                     echo '</div>';
                 } else {
                     echo '<div class="col-12 text-center">';
-                    echo '  <p>No upcoming events at the moment. Check back soon!</p>';
+                    echo '  <div class="alert alert-info">No upcoming events at the moment. Check back soon!</div>';
                     echo '</div>';
                 }
             } catch (PDOException $e) {
+                error_log('Database error: ' . $e->getMessage());
                 echo '<div class="col-12 text-center">';
-                echo '  <p>Unable to load events. Please try again later.</p>';
+                echo '  <div class="alert alert-danger">Unable to load events. Please try again later.</div>';
                 echo '</div>';
             }
             ?>
@@ -141,6 +127,7 @@ require_once __DIR__ . '/templates/header.php';
 require_once __DIR__ . '/templates/footer.php';
 ?>
 
+<?php
 // Initialize the application
 $app = new App\Core\App($config);
 
@@ -166,12 +153,3 @@ require BASE_PATH . '/app/core/Request.php';
 require BASE_PATH . '/app/core/Response.php';
 require BASE_PATH . '/app/core/Session.php';
 require BASE_PATH . '/app/core/View.php';
-
-// Initialize the application
-$app = new App\Core\App();
-
-// Include routes
-require BASE_PATH . '/routes/web.php';
-
-// Run the application
-$app->run();

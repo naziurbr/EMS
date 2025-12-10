@@ -1,4 +1,12 @@
 <?php
+// Session configuration must be set before starting the session
+if (session_status() === PHP_SESSION_NONE) {
+    ini_set('session.cookie_httponly', 1);
+    ini_set('session.use_only_cookies', 1);
+    ini_set('session.cookie_secure', isset($_SERVER['HTTPS']));
+    session_start();
+}
+
 // Base URL - Update this to match your installation path
 define('BASE_URL', 'http://' . $_SERVER['HTTP_HOST'] . '/for%20testing/event-management-system/public');
 
@@ -15,12 +23,6 @@ define('VIEW_PATH', APP_ROOT . '/app/views');
 // Error reporting
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
-
-// Session configuration
-ini_set('session.cookie_httponly', 1);
-ini_set('session.use_only_cookies', 1);
-ini_set('session.cookie_secure', isset($_SERVER['HTTPS']));
-session_start();
 
 // Set default timezone
 date_default_timezone_set('UTC');
